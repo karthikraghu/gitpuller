@@ -5,8 +5,8 @@ A Python tool to track learning progress using Gemini AI and GitHub integration.
 
 import os
 from datetime import datetime, timedelta, timezone
-from github import Github, GithubException
-import google.generativeai as genai
+from github import Github, GithubException, Auth
+from google import genai
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -25,7 +25,9 @@ def fetch_recent_push_events(github_token, max_repos=50, max_commits_per_repo=10
         request_timeout: Timeout in seconds for GitHub API requests
     """
     try:
-        g = Github(github_token, timeout=request_timeout)
+        # Use new Auth.Token API to avoid deprecation warning
+        auth = Auth.Token(github_token)
+        g = Github(auth=auth, timeout=request_timeout)
         user = g.get_user()
         print(f"Authenticated as: {user.login}")
 
@@ -64,7 +66,7 @@ def fetch_recent_push_events(github_token, max_repos=50, max_commits_per_repo=10
                         })
                         commit_count += 1
                     except GithubException as e:
-                        print(f"  Could not fetch details for commit {sha[:7]} in {repo.full_name}: {e}")
+                        # Silently ignore inaccessible commits
                         continue
 
                 if commits_data:
@@ -74,8 +76,11 @@ def fetch_recent_push_events(github_token, max_repos=50, max_commits_per_repo=10
                     })
                     print(f"  Found {len(commits_data)} commits in {repo.full_name}")
 
-            except GithubException as e:
-                print(f"  Could not access repo {repo.full_name}: {e}")
+            except GithubException:
+                # Silently ignore inaccessible repos
+                continue
+            except Exception:
+                # Silently ignore other errors
                 continue
 
         return push_data
@@ -94,8 +99,8 @@ def analyze_with_gemini(push_data, api_key):
     Returns the AI-generated learning summary.
     """
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # Use new google-genai library API
+        client = genai.Client(api_key=api_key)
         
         # Build the prompt with collected data
         if not push_data:
@@ -124,12 +129,10 @@ def analyze_with_gemini(push_data, api_key):
         
         print("\nAnalyzing with Gemini AI...")
         
-        response = model.generate_content(
-            [system_prompt, user_prompt],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=2048,
-            )
+        # Use new client.models.generate_content API
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=[system_prompt, user_prompt]
         )
         
         return response.text
