@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from github import Github, GithubException, Auth
 from google import genai
+from google.genai.types import HttpOptions
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -99,7 +100,7 @@ def analyze_with_gemini(push_data, api_key):
     Returns the AI-generated learning summary.
     """
     try:
-        # Use new google-genai library API
+        # Use new google-genai library API (uses v1beta by default which supports gemini-1.5-flash)
         client = genai.Client(api_key=api_key)
         
         # Build the prompt with collected data
@@ -131,7 +132,7 @@ def analyze_with_gemini(push_data, api_key):
         
         # Use new client.models.generate_content API
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=[system_prompt, user_prompt]
         )
         
