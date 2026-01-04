@@ -6,6 +6,10 @@ venv/
 env/
 ENV/
 
+# Database files
+data/
+*.db
+
 # Python cache
 __pycache__/
 *.py[cod]
