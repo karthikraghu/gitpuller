@@ -2,3 +2,4 @@ google-genai
 PyGithub
 python-dotenv
 pydantic
+sqlalchemy
