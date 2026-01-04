@@ -1,32 +1,23 @@
-"""SQLite database session management."""
+"""SQLAlchemy database session management."""
 
-import sqlite3
 from typing import Generator
-from app.core.config import settings
+from sqlalchemy.orm import sessionmaker, Session
+from app.db.base import engine
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db_connection():
+def get_db() -> Generator[Session, None, None]:
     """
-    Create and return a new SQLite database connection.
-    
-    Returns:
-        sqlite3.Connection: Database connection object
-    """
-    conn = sqlite3.connect(settings.DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # Enable dict-like access to rows
-    return conn
-
-
-def get_db() -> Generator:
-    """
-    Dependency that provides a database connection.
-    Automatically closes the connection when done.
+    Dependency that provides a database session.
+    Automatically closes the session when done.
     
     Yields:
-        sqlite3.Connection: Database connection
+        Session: SQLAlchemy database session
     """
-    conn = get_db_connection()
+    db = SessionLocal()
     try:
-        yield conn
+        yield db
     finally:
-        conn.close()
+        db.close()

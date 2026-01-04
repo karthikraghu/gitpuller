@@ -1,29 +1,22 @@
-"""Learning data model."""
+"""Learning SQLAlchemy ORM model."""
 
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+from app.db.base import Base
 
 
-@dataclass
-class Learning:
+class Learning(Base):
     """
-    Represents a single learning entry.
+    SQLAlchemy model for learning entries.
     """
-    repo: str
-    technology: str
-    concept: str
-    date: str
-    id: Optional[int] = None
-    created_at: Optional[datetime] = None
+    __tablename__ = "learnings"
     
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "id": self.id,
-            "date": self.date,
-            "repo": self.repo,
-            "technology": self.technology,
-            "concept": self.concept,
-            "created_at": str(self.created_at) if self.created_at else None
-        }
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    date = Column(String, nullable=False, index=True)
+    repo = Column(String, nullable=False)
+    technology = Column(String, nullable=False)
+    concept = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    def __repr__(self):
+        return f"<Learning(id={self.id}, repo='{self.repo}', technology='{self.technology}')>"

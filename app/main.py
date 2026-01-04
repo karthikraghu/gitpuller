@@ -10,7 +10,7 @@ This script orchestrates the workflow:
 import json
 from app.core.config import settings
 from app.db.base import init_database
-from app.db.session import get_db_connection
+from app.db.session import SessionLocal
 from app.crud.crud_learning import create_learning_batch
 from app.services.github_service import fetch_recent_commits
 from app.services.gemini_service import analyze_commits_with_ai
@@ -51,14 +51,14 @@ def main():
     else:
         print("No meaningful learning concepts identified.")
     
-    # Step 4: Save to database
+    # Step 4: Save to database using ORM
     print("\nStep 3: Saving to database...")
-    conn = get_db_connection()
+    db = SessionLocal()
     try:
-        count = create_learning_batch(conn, learning_items)
+        count = create_learning_batch(db, learning_items)
         print(f"Saved {count} learning items to database.")
     finally:
-        conn.close()
+        db.close()
     
     print("\n" + "=" * 60)
     print("Done!")

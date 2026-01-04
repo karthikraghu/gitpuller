@@ -1,36 +1,40 @@
-"""CRUD operations for learning entries."""
+"""CRUD operations for learning entries using SQLAlchemy ORM."""
 
-import sqlite3
 from typing import List, Optional
+from sqlalchemy.orm import Session
 from app.models.learning import Learning
+from app.schemas.learning import LearningCreate
 
 
-def create_learning(conn: sqlite3.Connection, learning: Learning) -> int:
+def create_learning(db: Session, learning: LearningCreate) -> Learning:
     """
     Insert a new learning entry into the database.
     
     Args:
-        conn: Database connection
-        learning: Learning object to insert
+        db: Database session
+        learning: LearningCreate schema object
         
     Returns:
-        int: ID of the inserted row
+        Learning: Created Learning ORM object
     """
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO learnings (date, repo, technology, concept) VALUES (?, ?, ?, ?)",
-        (learning.date, learning.repo, learning.technology, learning.concept)
+    db_learning = Learning(
+        date=learning.date,
+        repo=learning.repo,
+        technology=learning.technology,
+        concept=learning.concept
     )
-    conn.commit()
-    return cursor.lastrowid
+    db.add(db_learning)
+    db.commit()
+    db.refresh(db_learning)
+    return db_learning
 
 
-def create_learning_batch(conn: sqlite3.Connection, learnings: List[dict]) -> int:
+def create_learning_batch(db: Session, learnings: List[dict]) -> int:
     """
     Insert multiple learning entries in a batch.
     
     Args:
-        conn: Database connection
+        db: Database session
         learnings: List of dicts with keys: date, repo, technology, concept
         
     Returns:
@@ -39,116 +43,92 @@ def create_learning_batch(conn: sqlite3.Connection, learnings: List[dict]) -> in
     if not learnings:
         return 0
     
-    cursor = conn.cursor()
-    cursor.executemany(
-        "INSERT INTO learnings (date, repo, technology, concept) VALUES (?, ?, ?, ?)",
-        [(item["date"], item["repo"], item["technology"], item["concept"]) for item in learnings]
-    )
-    conn.commit()
-    return cursor.rowcount
+    db_learnings = [
+        Learning(
+            date=item["date"],
+            repo=item["repo"],
+            technology=item["technology"],
+            concept=item["concept"]
+        )
+        for item in learnings
+    ]
+    
+    db.bulk_save_objects(db_learnings)
+    db.commit()
+    return len(db_learnings)
 
 
-def get_learning_by_id(conn: sqlite3.Connection, learning_id: int) -> Optional[Learning]:
+def get_learning_by_id(db: Session, learning_id: int) -> Optional[Learning]:
     """
     Retrieve a single learning entry by ID.
     
     Args:
-        conn: Database connection
+        db: Database session
         learning_id: ID of the learning entry
         
     Returns:
         Learning object or None if not found
     """
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM learnings WHERE id = ?", (learning_id,))
-    row = cursor.fetchone()
-    
-    if row:
-        return Learning(
-            id=row["id"],
-            date=row["date"],
-            repo=row["repo"],
-            technology=row["technology"],
-            concept=row["concept"],
-            created_at=row["created_at"]
-        )
-    return None
+    return db.query(Learning).filter(Learning.id == learning_id).first()
 
 
-def get_all_learnings(conn: sqlite3.Connection, limit: int = 100) -> List[Learning]:
+def get_all_learnings(db: Session, skip: int = 0, limit: int = 100) -> List[Learning]:
     """
-    Retrieve all learning entries.
+    Retrieve all learning entries with pagination.
     
     Args:
-        conn: Database connection
+        db: Database session
+        skip: Number of records to skip
         limit: Maximum number of entries to return
         
     Returns:
         List of Learning objects
     """
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM learnings ORDER BY created_at DESC LIMIT ?",
-        (limit,)
-    )
-    rows = cursor.fetchall()
-    
-    return [
-        Learning(
-            id=row["id"],
-            date=row["date"],
-            repo=row["repo"],
-            technology=row["technology"],
-            concept=row["concept"],
-            created_at=row["created_at"]
-        )
-        for row in rows
-    ]
+    return db.query(Learning).order_by(Learning.created_at.desc()).offset(skip).limit(limit).all()
 
 
-def get_learnings_by_date(conn: sqlite3.Connection, date: str) -> List[Learning]:
+def get_learnings_by_date(db: Session, date: str) -> List[Learning]:
     """
     Retrieve learning entries for a specific date.
     
     Args:
-        conn: Database connection
+        db: Database session
         date: Date string in YYYY-MM-DD format
         
     Returns:
         List of Learning objects
     """
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT * FROM learnings WHERE date = ? ORDER BY created_at DESC",
-        (date,)
-    )
-    rows = cursor.fetchall()
+    return db.query(Learning).filter(Learning.date == date).order_by(Learning.created_at.desc()).all()
+
+
+def get_learnings_by_repo(db: Session, repo: str) -> List[Learning]:
+    """
+    Retrieve learning entries for a specific repository.
     
-    return [
-        Learning(
-            id=row["id"],
-            date=row["date"],
-            repo=row["repo"],
-            technology=row["technology"],
-            concept=row["concept"],
-            created_at=row["created_at"]
-        )
-        for row in rows
-    ]
+    Args:
+        db: Database session
+        repo: Repository name
+        
+    Returns:
+        List of Learning objects
+    """
+    return db.query(Learning).filter(Learning.repo == repo).order_by(Learning.created_at.desc()).all()
 
 
-def delete_learning(conn: sqlite3.Connection, learning_id: int) -> bool:
+def delete_learning(db: Session, learning_id: int) -> bool:
     """
     Delete a learning entry by ID.
     
     Args:
-        conn: Database connection
+        db: Database session
         learning_id: ID of the learning entry to delete
         
     Returns:
         bool: True if deleted, False if not found
     """
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM learnings WHERE id = ?", (learning_id,))
-    conn.commit()
-    return cursor.rowcount > 0
+    db_learning = db.query(Learning).filter(Learning.id == learning_id).first()
+    if db_learning:
+        db.delete(db_learning)
+        db.commit()
+        return True
+    return False
