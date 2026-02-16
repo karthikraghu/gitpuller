@@ -29,13 +29,13 @@ def create_learning(db: Session, learning: LearningCreate) -> Learning:
     return db_learning
 
 
-def create_learning_batch(db: Session, learnings: List[dict]) -> int:
+def create_learning_batch(db: Session, learnings: List[LearningCreate]) -> int:
     """
     Insert multiple learning entries in a batch.
     
     Args:
         db: Database session
-        learnings: List of dicts with keys: date, repo, technology, concept
+        learnings: List of validated LearningCreate Pydantic objects
         
     Returns:
         int: Number of rows inserted
@@ -43,13 +43,10 @@ def create_learning_batch(db: Session, learnings: List[dict]) -> int:
     if not learnings:
         return 0
     
+    # .model_dump() converts a Pydantic object to a dict — safer than
+    # accessing raw dict keys because the schema is already validated.
     db_learnings = [
-        Learning(
-            date=item["date"],
-            repo=item["repo"],
-            technology=item["technology"],
-            concept=item["concept"]
-        )
+        Learning(**item.model_dump())
         for item in learnings
     ]
     

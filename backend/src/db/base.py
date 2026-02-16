@@ -1,8 +1,15 @@
 """Database base configuration and table creation."""
 
+import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from src.core.config import settings
+
+# Ensure the database directory exists before SQLite tries to write to it.
+# os.makedirs with exist_ok=True is idempotent — safe to call every time.
+db_dir = Path(settings.DATABASE_PATH).parent
+os.makedirs(db_dir, exist_ok=True)
 
 # Create the SQLAlchemy engine
 engine = create_engine(
@@ -26,3 +33,4 @@ def init_database():
     # Create all tables
     Base.metadata.create_all(bind=engine)
     print(f"Database initialized: {settings.DATABASE_PATH}")
+
