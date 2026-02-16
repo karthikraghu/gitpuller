@@ -3,7 +3,8 @@ fastapi
 uvicorn[standard]
 
 # AI & GitHub integrations
-google-genai
+langchain-google-genai
+langchain-core
 PyGithub
 
 # Database
