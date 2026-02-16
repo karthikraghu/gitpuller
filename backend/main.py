@@ -1,69 +1,62 @@
 """
-Learning Progress Tracker - Main Entry Point
+GitPuller Backend — FastAPI Application
 
-This script orchestrates the workflow:
-1. Fetches recent commits from GitHub
-2. Analyzes them with Gemini AI
-3. Stores learning insights in SQLite database
+This is the entry point for the web server. Run with:
+    cd backend
+    uvicorn main:app --reload
+
+KEY CONCEPT — Application Lifecycle:
+  The @app.on_event("startup") hook runs once when the server starts.
+  We use it to initialize the database. In production, you'd use
+  Alembic migrations instead, but for development this is fine.
+
+KEY CONCEPT — CORS Middleware:
+  Browsers block cross-origin requests by default (security feature).
+  Since our Next.js frontend (localhost:3000) calls our FastAPI backend
+  (localhost:8000), we need to explicitly allow it. The next.config.js
+  proxy handles this in production, but CORS is a safety net.
 """
 
-import json
-from src.core.config import settings
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from src.db.base import init_database
-from src.db.session import SessionLocal
-from src.crud.crud_learning import create_learning_batch
-from src.services.github_service import fetch_recent_commits
-from src.services.gemini_service import analyze_commits_with_ai
+from src.api.sync import router as sync_router
+
+# Configure logging so we see what's happening in the terminal
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s"
+)
+
+# Create the FastAPI application
+app = FastAPI(
+    title="GitPuller API",
+    description="AI-powered learning tracker that analyzes your GitHub commits",
+    version="0.1.0",
+)
+
+# Allow the Next.js dev server to talk to this API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register our API routers
+app.include_router(sync_router)
 
 
-def main():
-    """Main application workflow."""
-    print("=" * 60)
-    print("GitHub Learning Progress Tracker")
-    print("=" * 60)
-    
-    # Validate configuration
-    if not settings.validate():
-        return
-    
-    # Initialize database
+@app.on_event("startup")
+def on_startup():
+    """Initialize the database when the server starts."""
     init_database()
-    
-    # Step 1: Fetch GitHub commits
-    print("\nStep 1: Fetching recent commits from GitHub...")
-    push_data = fetch_recent_commits()
-    
-    if not push_data:
-        print("\nNo commits found in the last 24 hours.")
-        return
-    
-    # Step 2: Analyze with Gemini AI
-    print("\nStep 2: Analyzing commits with Gemini AI...")
-    learning_items = analyze_commits_with_ai(push_data)
-    
-    # Step 3: Display results
-    print("\n" + "=" * 60)
-    print("LEARNING ANALYSIS")
-    print("=" * 60)
-    
-    if learning_items:
-        print(json.dumps(learning_items, indent=2))
-    else:
-        print("No meaningful learning concepts identified.")
-    
-    # Step 4: Save to database using ORM
-    print("\nStep 3: Saving to database...")
-    db = SessionLocal()
-    try:
-        count = create_learning_batch(db, learning_items)
-        print(f"Saved {count} learning items to database.")
-    finally:
-        db.close()
-    
-    print("\n" + "=" * 60)
-    print("Done!")
-    print("=" * 60)
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/")
+def root():
+    """Health check endpoint — useful for monitoring."""
+    return {"status": "ok", "app": "GitPuller API"}

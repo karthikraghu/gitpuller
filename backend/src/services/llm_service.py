@@ -1,8 +1,12 @@
-"""Gemini AI service for analyzing code changes.
+"""LLM service for analyzing code changes.
 
-Uses LangChain's .with_structured_output() to guarantee that Gemini
+Uses LangChain's .with_structured_output() to guarantee the LLM
 always returns data matching our Pydantic schema. No more manual
 JSON parsing or silent failures.
+
+Currently configured for Google Gemini, but because we use LangChain
+as an abstraction layer, you can swap in any provider (OpenAI, Anthropic,
+Mistral, etc.) by changing the import and constructor below.
 
 KEY CONCEPT — .with_structured_output():
   Instead of telling the LLM "return JSON" and hoping for the best,
@@ -27,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# System prompt — tells Gemini what role to play and how to think
+# System prompt — tells the LLM what role to play and how to think
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = (
     "You are a Developer Learning Tracker. Analyze the code changes to identify "
@@ -63,7 +67,7 @@ def _build_user_prompt(push_data: List[Dict]) -> str:
 
 def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
     """
-    Send code changes to Gemini AI for learning analysis.
+    Send code changes to the configured LLM for learning analysis.
 
     Returns a list of validated LearningCreate objects — guaranteed to match
     the schema or an empty list on failure.
@@ -78,14 +82,16 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
         return []
 
     try:
-        # 1. Initialize  LangChain Gemini wrapper
+        # 1. Initialize the LLM via LangChain
+        #    To swap providers, change the import and this constructor.
+        #    e.g. ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY)
         llm = ChatGoogleGenerativeAI(
             model=settings.GEMINI_MODEL,
             google_api_key=settings.GEMINI_API_KEY,
             temperature=0,  # Deterministic output for structured data
         )
 
-        # 2. Bind Pydantic schema — this is the "bulletproof" part
+        # 2. Bind our Pydantic schema — this is the "bulletproof" part
         #    The LLM is now forced to return a LearningAnalysis object.
         #    LangChain handles JSON parsing + Pydantic validation internally.
         structured_llm = llm.with_structured_output(LearningAnalysis)
@@ -97,13 +103,13 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
         ]
 
         # 4. Invoke — returns a LearningAnalysis object, NOT a string
-        logger.info("Analyzing commits with Gemini AI (structured output)...")
+        logger.info("Analyzing commits with LLM (structured output)...")
         result: LearningAnalysis = structured_llm.invoke(messages)
 
-        logger.info(f"Gemini returned {len(result.learnings)} learning items")
+        logger.info(f"LLM returned {len(result.learnings)} learning items")
         return result.learnings
 
     except Exception as e:
-        # Log  error but don't crash  API — return empty gracefully
-        logger.error(f"Gemini analysis failed: {e}")
+        # Log the error but don't crash the API — return empty gracefully
+        logger.error(f"LLM analysis failed: {e}")
         return []
