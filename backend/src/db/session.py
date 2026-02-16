@@ -2,7 +2,7 @@
 
 from typing import Generator
 from sqlalchemy.orm import sessionmaker, Session
-from app.db.base import engine
+from src.db.base import engine
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

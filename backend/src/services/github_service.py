@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict
 from github import Github, GithubException, Auth
-from app.core.config import settings
+from src.core.config import settings
 
 
 def fetch_recent_commits(github_token: str = None) -> List[Dict]:

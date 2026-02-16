@@ -1,0 +1,14 @@
+# Core framework
+fastapi
+uvicorn[standard]
+
+# AI & GitHub integrations
+google-genai
+PyGithub
+
+# Database
+sqlalchemy
+
+# Config & validation
+python-dotenv
+pydantic

@@ -1,7 +1,15 @@
-# Environment variables
+# ============================================================
+# GitPuller — Root .gitignore
+# ============================================================
+
+# ------- Secrets & Environment -------
 .env
 
-# Virtual environment
+# ------- Python (backend/) -------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 venv/
 env/
 ENV/
@@ -9,12 +17,6 @@ ENV/
 # Database files
 data/
 *.db
-
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
 
 # Distribution / packaging
 .Python
@@ -24,7 +26,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -34,9 +35,20 @@ wheels/
 .installed.cfg
 *.egg
 
-# IDE
+# ------- Node.js (frontend/) -------
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ------- IDE -------
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# ------- OS -------
+.DS_Store
+Thumbs.db

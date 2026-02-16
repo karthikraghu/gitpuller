@@ -2,7 +2,7 @@
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
-from app.core.config import settings
+from src.core.config import settings
 
 # Create the SQLAlchemy engine
 engine = create_engine(
@@ -21,7 +21,7 @@ def init_database():
     This function is idempotent - safe to call multiple times.
     """
     # Import all models here to ensure they're registered
-    from app.models.learning import Learning  # noqa
+    from src.models.learning import Learning  # noqa
     
     # Create all tables
     Base.metadata.create_all(bind=engine)

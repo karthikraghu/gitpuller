@@ -8,12 +8,12 @@ This script orchestrates the workflow:
 """
 
 import json
-from app.core.config import settings
-from app.db.base import init_database
-from app.db.session import SessionLocal
-from app.crud.crud_learning import create_learning_batch
-from app.services.github_service import fetch_recent_commits
-from app.services.gemini_service import analyze_commits_with_ai
+from src.core.config import settings
+from src.db.base import init_database
+from src.db.session import SessionLocal
+from src.crud.crud_learning import create_learning_batch
+from src.services.github_service import fetch_recent_commits
+from src.services.gemini_service import analyze_commits_with_ai
 
 
 def main():

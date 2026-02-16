@@ -3,7 +3,7 @@
 import json
 from typing import List, Dict
 from google import genai
-from app.core.config import settings
+from src.core.config import settings
 
 
 def analyze_commits_with_ai(push_data: List[Dict], api_key: str = None) -> List[Dict]:

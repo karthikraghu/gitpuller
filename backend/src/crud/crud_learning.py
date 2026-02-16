@@ -2,8 +2,8 @@
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.models.learning import Learning
-from app.schemas.learning import LearningCreate
+from src.models.learning import Learning
+from src.schemas.learning import LearningCreate
 
 
 def create_learning(db: Session, learning: LearningCreate) -> Learning:
