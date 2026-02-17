@@ -4,7 +4,7 @@ Uses LangChain's .with_structured_output() to guarantee the LLM
 always returns data matching our Pydantic schema. No more manual
 JSON parsing or silent failures.
 
-Currently configured for Google Gemini, but because we use LangChain
+Currently uses Google's model by default, but because we use LangChain
 as an abstraction layer, you can swap in any provider (OpenAI, Anthropic,
 Mistral, etc.) by changing the import and constructor below.
 
@@ -86,8 +86,8 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
         #    To swap providers, change the import and this constructor.
         #    e.g. ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY)
         llm = ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL,
-            google_api_key=settings.GEMINI_API_KEY,
+            model=settings.LLM_MODEL,
+            google_api_key=settings.LLM_API_KEY,
             temperature=0,  # Deterministic output for structured data
         )
 
