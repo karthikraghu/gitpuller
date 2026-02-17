@@ -120,6 +120,7 @@ def fetch_recent_commits(github_token: str = None) -> List[Dict]:
         if total_skipped > 0:
             logger.info(f"AI-Ignore filter skipped {total_skipped} files total")
 
+        print(f"DEBUG: Retrieved GitHub data: {push_data}")
         return push_data
 
     except GithubException as e:

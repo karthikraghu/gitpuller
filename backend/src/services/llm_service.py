@@ -126,20 +126,92 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
             LearningAnalysis, method=method
         )
 
-        # 3. Build messages
-        messages = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=_build_user_prompt(push_data)),
-        ]
+        # -------------------------------------------------------------------
+        # DATA PREPARATION: Flatten & Batch
+        # -------------------------------------------------------------------
+        # Flatten: [(repo_name, commit_dict), ...]
+        all_commits = []
+        for push in push_data:
+            repo_name = push["repo"]
+            for commit in push["commits"]:
+                all_commits.append((repo_name, commit))
 
-        # 4. Invoke — returns a LearningAnalysis object, NOT a string
-        logger.info("Analyzing commits with LLM (structured output)...")
-        result: LearningAnalysis = structured_llm.invoke(messages)
+        total_commits = len(all_commits)
+        BATCH_SIZE = 5
+        all_learnings = []
 
-        logger.info(f"LLM returned {len(result.learnings)} learning items")
-        return result.learnings
+        logger.info(f"Analyzing {total_commits} commits in batches of {BATCH_SIZE}...")
+
+        # Process in batches
+        for i in range(0, total_commits, BATCH_SIZE):
+            batch = all_commits[i : i + BATCH_SIZE]
+            batch_num = (i // BATCH_SIZE) + 1
+            total_batches = (total_commits + BATCH_SIZE - 1) // BATCH_SIZE
+
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} commits)...")
+
+            # Reconstruct mini-push_data for this batch
+            # We group by repo again to keep the prompt clean and robust
+            mini_push_data = []
+            current_repo = None
+            current_commits = []
+
+            # Sort by repo to group them easily (optional but cleaner)
+            batch.sort(key=lambda x: x[0])
+
+            for repo_name, commit in batch:
+                # If it's a new repo in this batch, start a new entry
+                if repo_name != current_repo:
+                    if current_repo is not None:
+                        mini_push_data.append({
+                            "repo": current_repo,
+                            "commits": current_commits
+                        })
+                    current_repo = repo_name
+                    current_commits = []
+                
+                current_commits.append(commit)
+            
+            # Don't forget the last group
+            if current_repo:
+                mini_push_data.append({
+                    "repo": current_repo,
+                    "commits": current_commits
+                })
+
+                # ---------------------------------------------------------------
+            # LLM INVOCATION
+            # ---------------------------------------------------------------
+            try:
+                user_prompt_content = _build_user_prompt(mini_push_data)
+                
+                # DEBUG PROMPT
+                logger.info("========== DEBUG: PROMPT START ==========")
+                logger.info(f"Prompt Length: {len(user_prompt_content)} characters")
+                logger.info(f"Prompt Preview (first 500 chars):\n{user_prompt_content[:500]}...")
+                logger.info("========== DEBUG: PROMPT END ============")
+
+                messages = [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=user_prompt_content),
+                ]
+
+                result: LearningAnalysis = structured_llm.invoke(messages)
+                if result and result.learnings:
+                    logger.info(f"  Batch {batch_num} found {len(result.learnings)} items")
+                    all_learnings.extend(result.learnings)
+                else:
+                    logger.debug(f"  Batch {batch_num} returned no items")
+
+            except Exception as e:
+                logger.error(f"  Batch {batch_num} failed: {e}")
+                # Continue to next batch instead of failing everything
+                continue
+
+        logger.info(f"Total learning items found across all batches: {len(all_learnings)}")
+        return all_learnings
 
     except Exception as e:
         # Log the error but don't crash the API — return empty gracefully
-        logger.error(f"LLM analysis failed: {e}")
+        logger.error(f"LLM analysis setup failed: {e}")
         return []
