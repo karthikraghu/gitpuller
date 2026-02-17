@@ -3,7 +3,7 @@ fastapi
 uvicorn[standard]
 
 # AI (LangChain abstraction — swap providers by changing the import)
-langchain-google-genai
+langchain-openai
 langchain-core
 
 # GitHub integration

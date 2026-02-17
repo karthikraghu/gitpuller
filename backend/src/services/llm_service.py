@@ -4,23 +4,38 @@ Uses LangChain's .with_structured_output() to guarantee the LLM
 always returns data matching our Pydantic schema. No more manual
 JSON parsing or silent failures.
 
-Currently uses Google's model by default, but because we use LangChain
-as an abstraction layer, you can swap in any provider (OpenAI, Anthropic,
-Mistral, etc.) by changing the import and constructor below.
+Provider and model are configured entirely via .env — no code changes
+needed to switch between Groq, OpenRouter, OpenAI, etc.
 
-KEY CONCEPT — .with_structured_output():
-  Instead of telling the LLM "return JSON" and hoping for the best,
-  we pass a Pydantic model definition. LangChain:
-    1. Converts the schema into the LLM's function-calling format
-    2. Sends it alongside the prompt
-    3. Auto-parses the response into a validated Pydantic object
-    4. Raises a clear error if validation fails
+KEY CONCEPT — OpenAI-Compatible APIs:
+  Many LLM providers (Groq, OpenRouter, Together, etc.) expose an API
+  that follows the same format as OpenAI's. This means LangChain's
+  ChatOpenAI class works with ALL of them — you just change the base_url.
+
+KEY CONCEPT — Structured Output Methods:
+  .with_structured_output() has two methods:
+
+  "function_calling" (default):
+    → Sends the Pydantic schema as a "tool" definition
+    → LLM responds with a tool call containing structured JSON
+    → Most reliable, but NOT all models support it
+    → Works with: GPT-4o, Claude 3.5, Llama 3.3 on Groq
+
+  "json_mode":
+    → Sets response_format to {"type": "json_object"}
+    → LangChain embeds the schema description in the prompt
+    → Parses the raw JSON response into a Pydantic object
+    → Less strict, but MUCH more widely supported
+    → Works with: almost every model on every provider
+
+  Which to use? Start with "json_mode" (safe default). Switch to
+  "function_calling" only when your model explicitly supports it.
 """
 
 import logging
 from typing import List, Dict
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from src.core.config import settings
@@ -45,7 +60,7 @@ SYSTEM_PROMPT = (
 def _build_user_prompt(push_data: List[Dict]) -> str:
     """
     Build the user-facing prompt from GitHub push data.
-    
+
     Separated into its own function so it can be tested independently.
     """
     prompt = "Here is the code activity from the last 24 hours:\n\n"
@@ -72,6 +87,10 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
     Returns a list of validated LearningCreate objects — guaranteed to match
     the schema or an empty list on failure.
 
+    The LLM provider, model, and structured output method are all read from
+    settings (which come from .env). To switch models, just edit .env and
+    restart — no code changes needed.
+
     Args:
         push_data: List of dicts containing repo name, commits, and patches
 
@@ -83,18 +102,29 @@ def analyze_commits_with_ai(push_data: List[Dict]) -> List[LearningCreate]:
 
     try:
         # 1. Initialize the LLM via LangChain
-        #    To swap providers, change the import and this constructor.
-        #    e.g. ChatOpenAI(model="gpt-4o", api_key=settings.OPENAI_API_KEY)
-        llm = ChatGoogleGenerativeAI(
+        #    ChatOpenAI works with ANY OpenAI-compatible API.
+        #    The base_url tells it WHERE to send requests.
+        #    Change it in .env to switch providers instantly.
+        llm = ChatOpenAI(
             model=settings.LLM_MODEL,
-            google_api_key=settings.LLM_API_KEY,
+            api_key=settings.LLM_API_KEY,
+            base_url=settings.LLM_BASE_URL,
             temperature=0,  # Deterministic output for structured data
         )
 
-        # 2. Bind our Pydantic schema — this is the "bulletproof" part
-        #    The LLM is now forced to return a LearningAnalysis object.
-        #    LangChain handles JSON parsing + Pydantic validation internally.
-        structured_llm = llm.with_structured_output(LearningAnalysis)
+        # 2. Bind our Pydantic schema with the configured method
+        #    "json_mode"         → widely supported, embeds schema in prompt
+        #    "function_calling"  → more reliable, but fewer models support it
+        #    Configured via LLM_STRUCTURED_METHOD in .env
+        method = settings.LLM_STRUCTURED_METHOD
+        logger.info(
+            f"Using model={settings.LLM_MODEL}, "
+            f"method={method}, "
+            f"base_url={settings.LLM_BASE_URL}"
+        )
+        structured_llm = llm.with_structured_output(
+            LearningAnalysis, method=method
+        )
 
         # 3. Build messages
         messages = [

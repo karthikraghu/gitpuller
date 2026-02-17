@@ -25,7 +25,11 @@ class Settings:
     REQUEST_TIMEOUT: int = 10
     
     # LLM Settings
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")  # Override in .env
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen/qwen3-32b")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+    # "json_mode" works with most models; "function_calling" is more reliable
+    # but only some models support it (see .env for details)
+    LLM_STRUCTURED_METHOD: str = os.getenv("LLM_STRUCTURED_METHOD", "json_mode")
     
     def validate(self) -> bool:
         """Validate that required settings are present."""
