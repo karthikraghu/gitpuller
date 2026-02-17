@@ -2,14 +2,19 @@
 fastapi
 uvicorn[standard]
 
-# AI & GitHub integrations
+# AI (LangChain abstraction — swap providers by changing the import)
 langchain-google-genai
 langchain-core
+
+# GitHub integration
 PyGithub
 
-# Database
-sqlalchemy
+# Graph Database
+neo4j
 
 # Config & validation
 python-dotenv
 pydantic
+
+# File filtering (gitignore-style pattern matching)
+pathspec

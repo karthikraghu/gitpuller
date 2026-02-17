@@ -2,7 +2,7 @@
 
 These schemas serve two purposes:
 1. API layer: FastAPI uses them to validate HTTP requests/responses
-2. AI layer: LangChain uses LearningAnalysis to force Gemini to return structured data
+2. AI layer: LangChain uses LearningAnalysis to force the LLM to return structured data
 """
 
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ class LearningCreate(LearningBase):
 
 class LearningResponse(LearningBase):
     """Schema for learning entry response (includes DB fields)."""
-    id: int
+    id: str  # Neo4j elementId() — string, not integer
     created_at: Optional[datetime] = None
 
     class Config:
@@ -37,11 +37,11 @@ class LearningResponse(LearningBase):
 # ---------------------------------------------------------------------------
 class LearningAnalysis(BaseModel):
     """
-    Wrapper schema that Gemini must conform to.
+    Wrapper schema that the LLM must conform to.
     
     Why a wrapper? .with_structured_output() needs a single Pydantic model.
     The LLM will return this object, and LangChain will auto-parse it.
-    If Gemini returns bad data, LangChain raises a validation error
+    If the LLM returns bad data, LangChain raises a validation error
     instead of silently passing garbage to your database.
     """
     learnings: List[LearningCreate] = Field(
